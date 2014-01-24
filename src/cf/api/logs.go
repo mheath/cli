@@ -107,11 +107,15 @@ func (repo LoggregatorLogsRepository) processMessages(messageQueue *SortedMessag
 				messageQueue.PushMessage(msg)
 			}
 		case <-stopInputChan:
-			flushLastMessages()
-			return
+			if len(inputChan) == 0 {
+				flushLastMessages()
+				return
+			}
 		case <-stopLoggingChan:
-			flushLastMessages()
-			return
+			if len(inputChan) == 0 {
+				flushLastMessages()
+				return
+			}
 		case <-time.After(10 * time.Millisecond):
 			for messageQueue.NextTimestamp() < time.Now().UnixNano() {
 				msg := messageQueue.PopMessage()
@@ -129,9 +133,6 @@ func (repo LoggregatorLogsRepository) sendKeepAlive(ws *websocket.Conn) {
 }
 
 func (repo LoggregatorLogsRepository) listenForMessages(ws *websocket.Conn, msgChan chan<- *logmessage.Message, stopInputChan chan<- bool) {
-	defer func() {
-		stopInputChan <- true
-	}()
 
 	for {
 		var data []byte
